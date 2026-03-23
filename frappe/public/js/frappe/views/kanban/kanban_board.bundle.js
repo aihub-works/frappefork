@@ -326,8 +326,6 @@ frappe.provide("frappe.views");
 			store.watch((state, getters) => {
 				return state.empty_state;
 			}, show_empty_state);
-
-			store.dispatch("update_order");
 		}
 
 		function prepare() {
@@ -526,6 +524,7 @@ frappe.provide("frappe.views");
 	frappe.views.KanbanBoardColumn = function (column, wrapper, board_perms) {
 		var self = {};
 		var filtered_cards = [];
+		var render_token = 0;
 
 		function init() {
 			make_dom();
@@ -551,10 +550,13 @@ frappe.provide("frappe.views");
 		}
 
 		function make_cards() {
+			render_token += 1;
+			const token = render_token;
 			self.$kanban_cards.empty();
 			var cards = store.state.cards;
 			filtered_cards = get_cards_for_column(cards, column);
 			var filtered_cards_names = filtered_cards.map((card) => card.name);
+			var ordered_cards = [];
 
 			var order = column.order;
 			if (order) {
@@ -562,17 +564,40 @@ frappe.provide("frappe.views");
 				// new cards
 				filtered_cards.forEach(function (card) {
 					if (order.indexOf(card.name) === -1) {
-						frappe.views.KanbanBoardCard(card, self.$kanban_cards);
+						ordered_cards.push(card);
 					}
 				});
 				order.forEach(function (name) {
 					if (!filtered_cards_names.includes(name)) return;
-					frappe.views.KanbanBoardCard(get_card(name), self.$kanban_cards);
+					ordered_cards.push(get_card(name));
 				});
 			} else {
-				filtered_cards.map(function (card) {
-					frappe.views.KanbanBoardCard(card, self.$kanban_cards);
-				});
+				ordered_cards = filtered_cards.slice();
+			}
+
+			progressive_render_cards(ordered_cards, token);
+		}
+
+		function progressive_render_cards(cards, token) {
+			const total = cards.length;
+			if (!total) return;
+
+			const initial_batch = total > 120 ? 12 : total;
+			const followup_batch = total > 120 ? 24 : total;
+
+			render_batch(0, initial_batch);
+
+			function render_batch(start, size) {
+				if (token !== render_token) return;
+
+				const end = Math.min(start + size, total);
+				for (let idx = start; idx < end; idx++) {
+					frappe.views.KanbanBoardCard(cards[idx], self.$kanban_cards);
+				}
+
+				if (end >= total) return;
+
+				window.requestAnimationFrame(() => render_batch(end, followup_batch));
 			}
 		}
 

@@ -2,7 +2,7 @@
 	<div class="kanban-card content">
 		{% if(image_url) { %}
 		<div class="kanban-image">
-			<img  src="{{image_url}}" alt="{{title}}">
+			<img src="{{image_url}}" alt="{{title}}" loading="lazy" decoding="async" fetchpriority="low" referrerpolicy="no-referrer">
 		</div>
 		{% } %}
 		<div class="kanban-card-body">
