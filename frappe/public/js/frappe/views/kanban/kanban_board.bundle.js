@@ -555,21 +555,25 @@ frappe.provide("frappe.views");
 			self.$kanban_cards.empty();
 			var cards = store.state.cards;
 			filtered_cards = get_cards_for_column(cards, column);
-			var filtered_cards_names = filtered_cards.map((card) => card.name);
+			var filtered_cards_by_name = new Map(
+				filtered_cards.map((card) => [card.name, card])
+			);
 			var ordered_cards = [];
 
 			var order = column.order;
 			if (order) {
 				order = JSON.parse(order);
+				var ordered_names = new Set(order);
 				// new cards
 				filtered_cards.forEach(function (card) {
-					if (order.indexOf(card.name) === -1) {
+					if (!ordered_names.has(card.name)) {
 						ordered_cards.push(card);
 					}
 				});
 				order.forEach(function (name) {
-					if (!filtered_cards_names.includes(name)) return;
-					ordered_cards.push(get_card(name));
+					var ordered_card = filtered_cards_by_name.get(name);
+					if (!ordered_card) return;
+					ordered_cards.push(ordered_card);
 				});
 			} else {
 				ordered_cards = filtered_cards.slice();
@@ -594,7 +598,6 @@ frappe.provide("frappe.views");
 				for (let idx = start; idx < end; idx++) {
 					frappe.views.KanbanBoardCard(cards[idx], self.$kanban_cards);
 				}
-
 				if (end >= total) return;
 
 				window.requestAnimationFrame(() => render_batch(end, followup_batch));
@@ -964,12 +967,6 @@ frappe.provide("frappe.views");
 	function get_cards_for_column(cards, column) {
 		return cards.filter(function (card) {
 			return card.column === column.title;
-		});
-	}
-
-	function get_card(name) {
-		return store.state.cards.find(function (c) {
-			return c.name === name;
 		});
 	}
 
